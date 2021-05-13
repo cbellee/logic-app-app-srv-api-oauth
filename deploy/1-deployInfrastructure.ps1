@@ -1,17 +1,13 @@
+#Requires –Modules Az, AzureAD
+
 $location = 'australiaeast'
-$aadTenantId = '3d49be6f-6e38-404b-bbd4-f61c1a2d25bf'
-$rgName = 'logic-app-rg'
-$deploymentName = 'my-logic-app-deployment'
-$appName = 'go-web-api-test'
+$aadTenantId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+$suffix = 'jwf8w9'
+$appName = "web-api-$suffix"
+$rgName = "$appName-rg"
+$deploymentName = "$appName-deployment"
 
-az login --tenant $aadTenantId
-az bicep build --file ./api.bicep
-
-$rg = New-AzResourceGroup -Name $rgName -Location $location -Force
-
-# Create an application role of given name and description
-Function CreateAppRole([string] $Name, [string] $Description)
-{
+Function New-AzAppRole([string] $Name, [string] $Description) {
     $appRole = New-Object Microsoft.Open.AzureAD.Model.AppRole
     $appRole.AllowedMemberTypes = New-Object System.Collections.Generic.List[string]
     $appRole.AllowedMemberTypes.Add("Application");
@@ -23,8 +19,17 @@ Function CreateAppRole([string] $Name, [string] $Description)
     return $appRole
 }
 
+# build ARM temaplate from .bicep file
+az bicep build --file ./api.bicep
+
+# create resource group
+$rg = New-AzResourceGroup -Name $rgName -Location $location -Force
+
+# auth to Azure AD
+Connect-AzureAD -TenantId $aadTenantId
+
 # create application registration and app role
-$role = CreateAppRole -Name "Api.Call" -Description "Api.Call Application Role"
+$role = New-AzAppRole -Name "Api.Call" -Description "Api.Call Application Role"
 $app = New-AzureADApplication -DisplayName $appName -AppRoles $role
 
 # add app secret
@@ -39,13 +44,17 @@ New-AzResourceGroupDeployment `
     -ResourceGroupName $rg.ResourceGroupName `
     -TemplateFile ./api.json `
     -webApiAppId $app.appId `
-    -webApiName 'cbellee-go-web-api' `
+    -webApiName "web-api-$suffix" `
     -webApiPath 'api/v1/report' `
-    -logicAppName 'cbellee-logic-app' `
-    -appServicePlan 'cbellee-alliance-asp' `
+    -logicAppName "logic-app-$suffix" `
+    -appServicePlan "asp- $suffix" `
     -containerImage 'belstarr/go-web-api:v1.0'
 
-# you'll now need to manually enable managed identity for the logic app in the portal
+# display Logic App name
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $rgName -Name $deploymentName
+"Logic App Name: $($deployment.Outputs.logicAppName.value)"
+
+# you'll now need to manually enable managed identity for the logic app name shown above, in the portal
 https://docs.microsoft.com/en-us/azure/logic-apps/create-managed-service-identity#enable-managed-identity
 
-# next, run 2-addAppRolePermission.ps1 script
+# now run the next script - ./2-addAppRolePermission.ps1

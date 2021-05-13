@@ -1,20 +1,23 @@
-# set your AAD tenantID
-$aadTenantId = "3d49be6f-6e38-404b-bbd4-f61c1a2d25bf"
-$rgName = 'logic-app-rg'
-$deploymentName = 'my-logic-app-deployment'
-$appName = 'go-web-api-test'
+#Requires –Modules Az, AzureAD
 
-# get deployment
+# set your AAD tenantID
+$aadTenantId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+$suffix = 'jwf8w9'
+$appName = "web-api-$suffix"
+$rgName = "$appName-rg"
+$deploymentName = "$appName-deployment"
+
+# get previous deployment output
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $rgName -Name $deploymentName
 $mid = Get-AzADServicePrincipal -DisplayNameBeginsWith $deployment.Outputs.logicAppName.value
 
-# app role
+# app role name
 $permissionsToAdd = "Api.Call"
 
-# App Service app registration
+# get App Service app registration
 $app = Get-AzADApplication -DisplayName $appName
 
-# authN to Azure AD
+# auth to Azure AD
 Connect-AzureAD -TenantId $aadTenantId
 
 # get the App Service app registration's associated Service Principal object
