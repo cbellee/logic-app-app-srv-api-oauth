@@ -1,6 +1,6 @@
 # Logic App to App Service OAuth example
 
-![Solution Diagram](https://github.com/cbellee/logic-app-app-srv-api-oauth/solution.png)
+![Solution Diagram](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/solution.png)
 
 ## Prerequisites
 
