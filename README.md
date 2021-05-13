@@ -1,5 +1,7 @@
 # Logic App to App Service OAuth example
 
+![Solution Diagram](https://github.com/cbellee/logic-app-app-srv-api-oauth/solution.png)
+
 ## Prerequisites
 
 - install the Azure PowerShell module
