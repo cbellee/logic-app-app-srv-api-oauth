@@ -19,7 +19,7 @@ var storageAccount2Name = 'stor2${prefix}'
 resource logic_app_resource 'Microsoft.Logic/workflows@2019-05-01' = {
   name: logicAppName
   location: resourceGroup().location
-  /*     identity: {
+/*       identity: {
     tenantId: subscription().tenantId
     type: 'SystemAssigned'
   } */
@@ -161,13 +161,7 @@ resource storage_account_2_resource 'Microsoft.Storage/storageAccounts@2021-02-0
 resource app_service_plan_resource 'Microsoft.Web/serverfarms@2018-02-01' = {
   name: appServicePlan
   location: resourceGroup().location
-  sku: {
-    name: 'P1v3'
-    tier: 'PremiumV3'
-    size: 'P1v3'
-    family: 'Pv3'
-    capacity: 1
-  }
+  sku: appServicePlanSku
   kind: 'linux'
   properties: {
     perSiteScaling: false
@@ -259,7 +253,7 @@ resource tableServices_storage_account_2_default 'Microsoft.Storage/storageAccou
   }
 }
 
-resource web_api_name_resource 'Microsoft.Web/sites@2018-11-01' = {
+resource web_api_resource 'Microsoft.Web/sites@2018-11-01' = {
   name: webApiName
   location: resourceGroup().location
   kind: 'app,linux,container'
@@ -294,7 +288,7 @@ resource web_api_name_resource 'Microsoft.Web/sites@2018-11-01' = {
 }
 
 resource web_api_name_web 'Microsoft.Web/sites/config@2018-11-01' = {
-  name: '${web_api_name_resource.name}/web'
+  name: '${web_api_resource.name}/web'
   properties: {
     numberOfWorkers: 1
     defaultDocuments: [
@@ -362,7 +356,7 @@ resource web_api_name_web 'Microsoft.Web/sites/config@2018-11-01' = {
 }
 
 resource web_api_name_web_api_name_azurewebsites_net 'Microsoft.Web/sites/hostNameBindings@2018-11-01' = {
-  name: '${web_api_name_resource.name}/${webApiName}.azurewebsites.net'
+  name: '${web_api_resource.name}/${webApiName}.azurewebsites.net'
   properties: {
     siteName: webApiName
     hostNameType: 'Verified'
@@ -508,3 +502,4 @@ resource storage_account_2_default_flowd67d6be4ba71bfejobdefinitions 'Microsoft.
 }
 
 output logicAppName string = logic_app_resource.name
+output webAppName string = web_api_resource.name

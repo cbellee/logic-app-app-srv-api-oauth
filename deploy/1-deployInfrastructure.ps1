@@ -28,7 +28,7 @@ $rg = New-AzResourceGroup -Name $rgName -Location $location -Force
 # auth to Azure AD
 Connect-AzureAD -TenantId $aadTenantId
 
-# create application registration and app role
+# create application registration and app role for backend app services web app
 $role = New-AzAppRole -Name "Api.Call" -Description "Api.Call Application Role"
 $app = New-AzureADApplication -DisplayName $appName -AppRoles $role
 
@@ -47,14 +47,27 @@ New-AzResourceGroupDeployment `
     -webApiName "web-api-$suffix" `
     -webApiPath 'api/v1/report' `
     -logicAppName "logic-app-$suffix" `
-    -appServicePlan "asp- $suffix" `
+    -appServicePlan "asp-$suffix" `
     -containerImage 'belstarr/go-web-api:v1.0'
+
+$deploymentOutput = Get-AzResourceGroupDeployment -ResourceGroupName $rg.ResourceGroupName -Name $deploymentName
+
+# enable EasyAuth on web app.
+az webapp auth update `
+    --name $deploymentOutput.Outputs.webAppName.value `
+    --resourcegroup $rg.ResourceGroupName `
+    --enabled true `
+    --action LoginWithAzureActiveDirectory `
+    --aad-client-id $app.AppId `
+    --aad-client-secret $appPassword.Value `
+    --token-store true `
+    --output none
 
 # display Logic App name
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $rgName -Name $deploymentName
 "Logic App Name: $($deployment.Outputs.logicAppName.value)"
 
-# you'll now need to manually enable managed identity for the logic app name shown above, in the portal
+# you'll now need to manually enable managed identity for the logic app name shown above, in the portal (currently this can't be achieved using an ARM template, PowerShell or CLI...
 https://docs.microsoft.com/en-us/azure/logic-apps/create-managed-service-identity#enable-managed-identity
 
 # now run the next script - ./2-addAppRolePermission.ps1
