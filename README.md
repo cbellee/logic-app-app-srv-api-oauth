@@ -30,10 +30,9 @@
 - Click 'Add'
 ![step 3](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/3-application-registration.png)
 - For the 'Supported Account Types' option, select the first option 'Accounts in this organizational directory only'
-- Click 'Register'
-- ![step 4](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/4-application-registration.png)
-- ![step 5](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/5-application-registration.png)
+![step 4](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/4-application-registration.png)
 - Wait for the 'Create Application' event notification to be displayed
+![step 5](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/5-application-registration.png)
 2. Add new scope to Web API's Enterprise Application (Service Principal)
 - Browse to 'Azure Active Directory -> Application Registrations'
 - Copy the 'Application (client) ID' to your clipboard
@@ -44,14 +43,14 @@
 - Add a display name, such as 'Api.Caller'
 - In 'Allowed member types' select the 'Application' option 
 - Ensure 'Do you want to enable this App role?' is checked
-- ![step 2](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/11-application-registration.png)
+![step 2](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/11-application-registration.png)
 - Navigate back to 'Azure Active Directory -> Application Registrations' and find the App registration you just created.
 - Click on 'App roles' menu item and your newly created app role should be displayed
-- ![step 3](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/12-application-registration.png)
+![step 3](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/12-application-registration.png)
 3. Enable Managed Identity on Logic App
-- ![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/13-application-registration.png)
+![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/13-application-registration.png)
 4. Add Logic App's Managed Identity to allowed users on Web API's Enterprise Application
 - This can currently only be achieved using Azure CLI or PowerShell. Use the ./deploy/2-addAppRolePermission.ps1 script to do this.
 5. Add 'Microsoft' identity provider in the Azure App Service's Web Application's 'Authentication' section 
-- ![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/14-application-registration.png)
-- ![step 2](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/15-application-registration.png)
+![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/14-application-registration.png)
+![step 2](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/15-application-registration.png)
