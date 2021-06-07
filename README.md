@@ -37,7 +37,7 @@
 - Browse to 'Azure Active Directory -> Application Registrations'
 - Copy the 'Application (client) ID' to your clipboard
 - Click the 'Managed Application in Directory' link
-- ![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/10-application-registration.png)
+![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/images/10-application-registration.png)
 - Select the 'App Roles' menu item
 - Click 'Create App Role'
 - Add a display name, such as 'Api.Caller'
