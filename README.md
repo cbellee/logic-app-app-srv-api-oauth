@@ -39,6 +39,6 @@
 - ![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/13-application-registration.png)
 5. Add Logic App's Managed Identity to allowed users on Web API's Enterprise Application
 - this can currently only be achieved using Azure CLI or PowerShell. Use the ./deploy/2-addAppRolePermission.ps1 script to do this.
-6. Add identity provider to web appi in the Azure App Service's Web Application's 'Authentication' section 
+6. Add 'Microsoft' identity provider in the Azure App Service's Web Application's 'Authentication' section 
 - ![step 1](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/14-application-registration.png)
 - ![step 2](https://github.com/cbellee/logic-app-app-srv-api-oauth/blob/main/15-application-registration.png)
