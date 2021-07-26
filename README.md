@@ -14,7 +14,7 @@
   - `$aadTenantId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'` 
 - `PS C:/> cd ./deploy` 
 - `PS C:/> ./1-deployInfrastructure.ps1`
-- enable Managed Identity for the Logic App dispalyed at the end of the previous script, in the Azure portal
+- enable Managed Identity for the Logic App displayed at the end of the previous script, in the Azure portal
   - https://docs.microsoft.com/en-us/azure/logic-apps/create-managed-service-identity#enable-managed-identity
 - `PS C:\> ./2-addAppRolePermission.ps1`
 

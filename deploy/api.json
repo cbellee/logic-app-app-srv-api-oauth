@@ -1,0 +1,644 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.451.19169",
+      "templateHash": "3304009695620001588"
+    }
+  },
+  "parameters": {
+    "webApiPath": {
+      "type": "string"
+    },
+    "webApiAppId": {
+      "type": "string"
+    },
+    "containerImage": {
+      "type": "string"
+    },
+    "appServicePlanSku": {
+      "type": "object",
+      "defaultValue": {
+        "name": "P1v2",
+        "tier": "PremiumV2",
+        "size": "P1v2",
+        "family": "Pv2",
+        "capacity": 1
+      }
+    }
+  },
+  "functions": [],
+  "variables": {
+    "suffix": "[uniqueString(resourceGroup().id)]",
+    "webApiName": "[format('api-{0}', variables('suffix'))]",
+    "appServicePlanName": "[format('asp-{0}', variables('suffix'))]",
+    "logicAppName": "[format('logic-app-{0}', variables('suffix'))]",
+    "storageAccount1Name": "[format('stor1{0}', variables('suffix'))]",
+    "storageAccount2Name": "[format('stor2{0}', variables('suffix'))]",
+    "issuer": "[format('https://sts.windows.net/{0}/', subscription().tenantId)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[variables('logicAppName')]",
+      "location": "[resourceGroup().location]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "accessControl": {
+          "actions": {
+            "allowedCallerIpAddresses": [],
+            "openAuthenticationPolicies": {
+              "policies": {
+                "aud": {
+                  "claims": [
+                    {
+                      "name": "iss",
+                      "value": "[format('https://sts.windows.net/{0}/', subscription().tenantId)]"
+                    },
+                    {
+                      "name": "aud",
+                      "value": "[environment().resourceManager]"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {},
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {}
+              }
+            }
+          },
+          "actions": {
+            "HTTP": {
+              "runAfter": {},
+              "type": "Http",
+              "inputs": {
+                "authentication": {
+                  "audience": "[parameters('webApiAppId')]",
+                  "type": "ManagedServiceIdentity"
+                },
+                "method": "GET",
+                "uri": "[format('https://{0}.azurewebsites.net/{1}', variables('webApiName'), parameters('webApiPath'))]"
+              }
+            },
+            "Response": {
+              "runAfter": {
+                "HTTP": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "body": "@body('HTTP')",
+                "statusCode": 200
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {}
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('storageAccount1Name')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('storageAccount2Name')]",
+      "location": "centralus",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2018-02-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[resourceGroup().location]",
+      "sku": "[parameters('appServicePlanSku')]",
+      "kind": "linux",
+      "properties": {
+        "perSiteScaling": false,
+        "maximumElasticWorkerCount": 1,
+        "isSpot": false,
+        "reserved": true,
+        "isXenon": false,
+        "hyperV": false,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount1Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "enabled": false
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount2Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "enabled": false
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount1Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount2Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount1Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount2Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount1Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default', variables('storageAccount2Name'))]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2018-11-01",
+      "name": "[variables('webApiName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "app,linux,container",
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[format('{0}.azurewebsites.net', variables('webApiName'))]",
+            "sslState": "Disabled",
+            "hostType": "Standard"
+          },
+          {
+            "name": "[format('{0}.scm.azurewebsites.net', variables('webApiName'))]",
+            "sslState": "Disabled",
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "reserved": true,
+        "isXenon": false,
+        "hyperV": false,
+        "siteConfig": {},
+        "scmSiteAlsoStopped": false,
+        "clientAffinityEnabled": false,
+        "clientCertEnabled": false,
+        "hostNamesDisabled": false,
+        "containerSize": 0,
+        "dailyMemoryTimeQuota": 0,
+        "httpsOnly": false,
+        "redundancyMode": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2018-11-01",
+      "name": "[format('{0}/web', variables('webApiName'))]",
+      "properties": {
+        "numberOfWorkers": 1,
+        "defaultDocuments": [
+          "Default.htm",
+          "Default.html",
+          "Default.asp",
+          "index.htm",
+          "index.html",
+          "iisstart.htm",
+          "default.aspx",
+          "index.php",
+          "hostingstart.html"
+        ],
+        "netFrameworkVersion": "v4.0",
+        "linuxFxVersion": "[format('DOCKER|{0}', parameters('containerImage'))]",
+        "requestTracingEnabled": false,
+        "remoteDebuggingEnabled": false,
+        "httpLoggingEnabled": false,
+        "logsDirectorySizeLimit": 35,
+        "detailedErrorLoggingEnabled": false,
+        "publishingUsername": "[format('${0}', variables('webApiName'))]",
+        "azureStorageAccounts": {},
+        "scmType": "None",
+        "use32BitWorkerProcess": true,
+        "webSocketsEnabled": false,
+        "alwaysOn": true,
+        "managedPipelineMode": "Integrated",
+        "virtualApplications": [
+          {
+            "virtualPath": "/",
+            "physicalPath": "site\\wwwroot",
+            "preloadEnabled": true
+          }
+        ],
+        "loadBalancing": "LeastRequests",
+        "experiments": {
+          "rampUpRules": []
+        },
+        "autoHealEnabled": false,
+        "localMySqlEnabled": false,
+        "ipSecurityRestrictions": [
+          {
+            "ipAddress": "Any",
+            "action": "Allow",
+            "priority": 1,
+            "name": "Allow all",
+            "description": "Allow all access"
+          }
+        ],
+        "scmIpSecurityRestrictions": [
+          {
+            "ipAddress": "Any",
+            "action": "Allow",
+            "priority": 1,
+            "name": "Allow all",
+            "description": "Allow all access"
+          }
+        ],
+        "scmIpSecurityRestrictionsUseMain": false,
+        "http20Enabled": false,
+        "minTlsVersion": "1.2",
+        "ftpsState": "AllAllowed",
+        "reservedInstanceCount": 0
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('webApiName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2018-11-01",
+      "name": "[format('{0}/authsettings', variables('webApiName'))]",
+      "properties": {
+        "enabled": true,
+        "unauthenticatedClientAction": "RedirectToLoginPage",
+        "tokenStoreEnabled": true,
+        "defaultProvider": "AzureActiveDirectory",
+        "tokenRefreshExtensionHours": 72,
+        "clientId": "[parameters('webApiAppId')]",
+        "issuer": "[variables('issuer')]",
+        "validateIssuer": true,
+        "allowedAudiences": [
+          "[reference(resourceId('Microsoft.Logic/workflows', variables('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Logic/workflows', variables('logicAppName'))]",
+        "[resourceId('Microsoft.Web/sites', variables('webApiName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/hostNameBindings",
+      "apiVersion": "2018-11-01",
+      "name": "[format('{0}/{1}.azurewebsites.net', variables('webApiName'), variables('webApiName'))]",
+      "properties": {
+        "siteName": "[variables('webApiName')]",
+        "hostNameType": "Verified"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('webApiName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/azure-webjobs-hosts', format('{0}/default', variables('storageAccount1Name')))]",
+      "properties": {
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', variables('storageAccount1Name')), '/')[0], split(format('{0}/default', variables('storageAccount1Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/azure-webjobs-hosts', format('{0}/default', variables('storageAccount2Name')))]",
+      "properties": {
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/azure-webjobs-secrets', format('{0}/default', variables('storageAccount1Name')))]",
+      "properties": {
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', variables('storageAccount1Name')), '/')[0], split(format('{0}/default', variables('storageAccount1Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/azure-webjobs-secrets', format('{0}/default', variables('storageAccount2Name')))]",
+      "properties": {
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/au-chamber-alliance-api8ec8', format('{0}/default', variables('storageAccount1Name')))]",
+      "properties": {
+        "accessTier": "TransactionOptimized",
+        "shareQuota": 5120,
+        "enabledProtocols": "SMB"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', split(format('{0}/default', variables('storageAccount1Name')), '/')[0], split(format('{0}/default', variables('storageAccount1Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/auchamberalliance-testac5a', format('{0}/default', variables('storageAccount2Name')))]",
+      "properties": {
+        "accessTier": "TransactionOptimized",
+        "shareQuota": 5120,
+        "enabledProtocols": "SMB"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfejobtriggers00', format('{0}/default', variables('storageAccount2Name')))]",
+      "properties": {
+        "metadata": {}
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfe658e8ac24ffbd82flows', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfef2f1991a497d531flows', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfeflowaccesskeys', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfeflowruntimecontext', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfeflows', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfeflowsubscriptions', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfeflowsubscriptionsummary', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/flowd67d6be4ba71bfejobdefinitions', format('{0}/default', variables('storageAccount2Name')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount2Name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', split(format('{0}/default', variables('storageAccount2Name')), '/')[0], split(format('{0}/default', variables('storageAccount2Name')), '/')[1])]"
+      ]
+    }
+  ],
+  "outputs": {
+    "logicAppName": {
+      "type": "string",
+      "value": "[variables('logicAppName')]"
+    },
+    "webAppName": {
+      "type": "string",
+      "value": "[variables('webApiName')]"
+    },
+    "webAppUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('webApiName'))).defaultHostName]"
+    },
+    "logicAppManagedIdentityPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+    }
+  }
+}

@@ -1,8 +1,5 @@
-param webApiName string
 param webApiPath string
 param webApiAppId string
-param logicAppName string
-param appServicePlan string
 param containerImage string
 param appServicePlanSku object = {
   name: 'P1v2'
@@ -12,17 +9,21 @@ param appServicePlanSku object = {
   capacity: 1
 }
 
-var prefix = uniqueString(resourceGroup().id)
-var storageAccount1Name = 'stor1${prefix}'
-var storageAccount2Name = 'stor2${prefix}'
+var suffix = uniqueString(resourceGroup().id)
+var webApiName = 'api-${suffix}'
+var appServicePlanName = 'asp-${suffix}'
+var logicAppName = 'logic-app-${suffix}'
+var storageAccount1Name = 'stor1${suffix}'
+var storageAccount2Name = 'stor2${suffix}'
+var issuer = 'https://sts.windows.net/${subscription().tenantId}/' // v2 endpoint 'https://sts.windows.net/${subscription().tenantId}/v2.0'
+var logicAppManagedIdentityPrincipalId = reference(resourceId('Microsoft.Logic/workflows', logic_app_resource.name), '2019-05-01', 'full').identity.principalId
 
 resource logic_app_resource 'Microsoft.Logic/workflows@2019-05-01' = {
   name: logicAppName
   location: resourceGroup().location
-/*       identity: {
-    tenantId: subscription().tenantId
+  identity: {
     type: 'SystemAssigned'
-  } */
+  }
   properties: {
     accessControl: {
       actions: {
@@ -37,7 +38,7 @@ resource logic_app_resource 'Microsoft.Logic/workflows@2019-05-01' = {
                 }
                 {
                   name: 'aud'
-                  value: 'https://management.core.windows.net/'
+                  value: environment().resourceManager //'https://management.core.windows.net/'
                 }
               ]
             }
@@ -65,7 +66,7 @@ resource logic_app_resource 'Microsoft.Logic/workflows@2019-05-01' = {
           type: 'Http'
           inputs: {
             authentication: {
-              audience: '${webApiAppId}'
+              audience: webApiAppId
               type: 'ManagedServiceIdentity'
             }
             method: 'GET'
@@ -97,7 +98,6 @@ resource storage_account_1_resource 'Microsoft.Storage/storageAccounts@2021-02-0
   location: resourceGroup().location
   sku: {
     name: 'Standard_LRS'
-    tier: 'Standard'
   }
   kind: 'StorageV2'
   properties: {
@@ -130,7 +130,6 @@ resource storage_account_2_resource 'Microsoft.Storage/storageAccounts@2021-02-0
   location: 'centralus'
   sku: {
     name: 'Standard_LRS'
-    tier: 'Standard'
   }
   kind: 'StorageV2'
   properties: {
@@ -159,7 +158,7 @@ resource storage_account_2_resource 'Microsoft.Storage/storageAccounts@2021-02-0
 }
 
 resource app_service_plan_resource 'Microsoft.Web/serverfarms@2018-02-01' = {
-  name: appServicePlan
+  name: appServicePlanName
   location: resourceGroup().location
   sku: appServicePlanSku
   kind: 'linux'
@@ -355,7 +354,25 @@ resource web_api_name_web 'Microsoft.Web/sites/config@2018-11-01' = {
   }
 }
 
-resource web_api_name_web_api_name_azurewebsites_net 'Microsoft.Web/sites/hostNameBindings@2018-11-01' = {
+resource web_api_auth_settings 'Microsoft.Web/sites/config@2018-11-01' = {
+  name: '${web_api_resource.name}/authsettings'
+  properties: {
+    enabled: true
+    //runtimeVersion: 'string'
+    unauthenticatedClientAction: 'RedirectToLoginPage'
+    tokenStoreEnabled: true
+    defaultProvider: 'AzureActiveDirectory'
+    tokenRefreshExtensionHours: 72 // default value is 72 hours
+    clientId: webApiAppId
+    issuer: issuer
+    validateIssuer: true
+    allowedAudiences: [
+      logicAppManagedIdentityPrincipalId
+    ]
+  }
+}
+
+resource web_api_azurewebsites_net 'Microsoft.Web/sites/hostNameBindings@2018-11-01' = {
   name: '${web_api_resource.name}/${webApiName}.azurewebsites.net'
   properties: {
     siteName: webApiName
@@ -503,3 +520,5 @@ resource storage_account_2_default_flowd67d6be4ba71bfejobdefinitions 'Microsoft.
 
 output logicAppName string = logic_app_resource.name
 output webAppName string = web_api_resource.name
+output webAppUrl string = web_api_resource.properties.defaultHostName
+output logicAppManagedIdentityPrincipalId string = logicAppManagedIdentityPrincipalId
