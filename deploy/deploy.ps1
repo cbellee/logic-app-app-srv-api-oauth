@@ -1,5 +1,3 @@
-# #requires –Modules Az, AzureAD
-
 $location = 'australiaeast'
 $resourceGroupName = 'logic-app-auth-rg'
 $appName = 'web-api-app-reg'
@@ -43,11 +41,12 @@ $deployment = New-AzSubscriptionDeployment `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile ./main.json `
     -location $location `
+    -containerImage 'belstarr/go-web-api:v1.0' `
+    -webApiPath = '/api/v1/report' `
     -webApiAppId $webAppRegistration.appId `
     -Verbose
 
 # get deployment output
-# $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name 'apiDeployment'
 $logicApp = Get-AzADServicePrincipal -DisplayNameBeginsWith $deployment.Outputs.logicAppName.value
 $webAppUrl = $deployment.Outputs.webAppUrl.value
 
@@ -56,18 +55,7 @@ Set-AzureADServicePrincipal -ObjectId $webAppServicePrincipal.Id -AppRoleAssignm
 
 # set web app reply URL
 Set-AzureADApplication -ObjectId $webAppRegistration.ObjectId -ReplyUrls "https://$webAppUrl/.auth/login/aad/callback"
-
-# set '"accessTokenAcceptedVersion": 2,' in app registration manifest!!!
-<# {
-	"id": "ea92bee5-d0f7-4e04-a0dc-840e459a78c1",
-	"acceptMappedClaims": null,
-	"accessTokenAcceptedVersion": 2,
-	"addIns": [],
-	"allowPublicClient": null,
-	"appId": "52a8cfbe-3c5e-42ee-8858-ad4ecbd40bed",
-	"appRoles": [
-		{
-    #>         
+       
 # add Logic App's Managed Identity to the Web app's app registration app role
 if (!(Get-AzureADServiceAppRoleAssignment -ObjectId $webAppServicePrincipal.Id).PrincipalId -eq $logicApp.Id) {
     "Assigning RoleId: $($appRole.Id) to Service Principal $($webAppServicePrincipal.Id)"
