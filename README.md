@@ -10,7 +10,7 @@
   - `PS C:\> Find  Module AzureAD | Install Module`
 
 ## Deployment
-- Clone the repo
+- Clone this repo
 - Change current directory to /deploy
   - `PS C:/> cd ./deploy` 
 - Ensure you're authenticated via PowerShell 'Login-AzAccount' and have selected the target subscription with 'Set-AzSubscription -SubscriptionId <subscriptionId>
